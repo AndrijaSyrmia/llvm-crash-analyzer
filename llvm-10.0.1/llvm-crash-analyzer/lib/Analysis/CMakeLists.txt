@@ -9,6 +9,9 @@ llvm_add_library(CrashAnalyzerTaintAnalysis
   ConcreteReverseExec.cpp
   RegisterEquivalence.cpp
   TaintAnalysis.cpp
+
+  MemoryInstsCount.cpp
+
   TaintDataFlowGraph.cpp
   DEPENDS
     intrinsics_gen

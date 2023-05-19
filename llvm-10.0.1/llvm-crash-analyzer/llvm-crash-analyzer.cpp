@@ -15,6 +15,8 @@
 #include "Analysis/TaintAnalysis.h"
 #include "Target/CATargetInfo.h"
 
+#include "Analysis/MemoryInstsCount.h"
+
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringSet.h"
 #include "llvm/ADT/Triple.h"
@@ -91,6 +93,12 @@ static cl::opt<std::string> PrintDecMIR("print-decompiled-mir",
                                         cl::desc("Print decompiled LLVM MIR."),
                                         cl::value_desc("filename"),
                                         cl::init(""), cat(CrashAnalyzer));
+
+static cl::opt<bool> PrintMemoryInstsCount("print-memory-insts-count",
+                                            cl::desc("Print number of memory access instructions"),
+                                            cl::init(false),
+                                            cat(CrashAnalyzer)
+                                            );
 } // namespace
 /// @}
 //===----------------------------------------------------------------------===//
@@ -219,6 +227,8 @@ int main(int argc, char **argv) {
   TA.setDecompiler(Dec);
   TA.runOnBlameModule(BlameTrace);
 
+  
+
   if (PrintDecMIR != "") {
     StringRef FileName = PrintDecMIR;
     if (!FileName.endswith(".mir")) {
@@ -237,6 +247,15 @@ int main(int argc, char **argv) {
     for (auto &BF : BlameTrace) {
       if (BF.MF) printMIR(OS_FILE, *BF.MF);
     }
+  }
+
+  
+
+  if(PrintMemoryInstsCount)
+  {
+    MemoryInstsCount MIC;
+    // MIC.runOnBlameModule(BlameTrace);
+    MIC.runOnMIRFile(PrintDecMIR, coreFile);
   }
 
   return exit_code;
