@@ -25,8 +25,6 @@ class MemoryInstsCount {
 
     public:
 
-    static void MemInsCountInlineAsmDiagHandler(const SMDiagnostic& SMD, void* Context, unsigned LocCookie);
-
     bool runOnBlameModule(const BlameModule& BM);
     bool runOnMIRFile(StringRef MIRFile);
     bool runOnMachineFunction(const MachineFunction& MF);

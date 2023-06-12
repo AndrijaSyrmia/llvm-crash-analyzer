@@ -10,19 +10,6 @@
 
 #define DEBUG_TYPE "memory-insts-count"
 
-void MemoryInstsCount::MemInsCountInlineAsmDiagHandler(const SMDiagnostic& SMD, void* Context, unsigned LocCookie)
-{
-    bool* HasError = static_cast<bool*>(Context);
-
-    if(SMD.getKind() == SourceMgr::DK_Error) *HasError = true;
-
-    SMD.print(nullptr, errs());
-
-    if(LocCookie)
-    {
-        WithColor::note() << "!srcloc = " << LocCookie << "\n";
-    }
-}
 
 bool MemoryInstsCount::runOnBlameModule(const BlameModule& BM)
 {
@@ -100,7 +87,7 @@ bool MemoryInstsCount::runOnMIRFile(StringRef MIRFile, CoreFile& coreFile)
     if(MIRFile == "" || !MIRFile.endswith(".mir")) return returnValue;
 
     const Target* TheTarget = TargetRegistry::lookupTarget(TripleName, TheTriple, Error);
-    if(!TheTarget){outs() << "No target" << "\n"; return false;}
+    if(!TheTarget){outs() << "No target" << "\n"; return returnValue;}
 
     std::unique_ptr<TargetMachine> TM(TheTarget->createTargetMachine(TheTripleString, CPUStr, FeaturesStr, TargetOptions(), None));
     if(!TM){/*error*/ return false;} 
