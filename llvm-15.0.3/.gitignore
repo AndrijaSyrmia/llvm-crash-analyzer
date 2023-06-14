@@ -67,6 +67,13 @@ pythonenv*
 /clang/utils/analyzer/projects/*/CachedSource
 /clang/utils/analyzer/projects/*/PatchedSource
 /clang/utils/analyzer/projects/*/ScanBuildResults
+
+build.sh
+careless_build.sh
+.*
+zezanje.sh
+zezanje2.sh
+output.txt
 /clang/utils/analyzer/projects/*/RefScanBuildResults
 # automodapi puts generated documentation files here.
 /lldb/docs/python_api/
