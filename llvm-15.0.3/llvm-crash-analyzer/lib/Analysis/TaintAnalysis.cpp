@@ -50,6 +50,7 @@ static cl::opt<unsigned>
                     cl::desc("Set frame to start tracking target taint info."),
                     cl::value_desc("start_crash_order"), cl::init(0));
 
+// Ukini
 static cl::opt<std::string>
     TestChangedAdressValues("test-changed-address-values",
                             cl::desc("Test taint-analysis with changed values in address."),
@@ -65,7 +66,6 @@ using TaintInfo = llvm::crash_analyzer::TaintInfo;
 
 unsigned Node::NextID = 0;
 
-std::map<uint64_t, uint64_t> ChangedAdressValues;
 
 // New implementation of operator==.
 bool llvm::crash_analyzer::operator==(const TaintInfo &T1,
@@ -236,6 +236,7 @@ crash_analyzer::TaintAnalysis::TaintAnalysis(
     bool PrintPotentialCrashCauseLocation)
     : TaintDotFileName(TaintDotFileName), MirDotFileName(MirDotFileName),
       PrintPotentialCrashCauseLocation(PrintPotentialCrashCauseLocation) {
+        // Ukini
         if(TestChangedAdressValues != "")
         {
         //not checking if number is too large
@@ -268,8 +269,12 @@ crash_analyzer::TaintAnalysis::TaintAnalysis(
               }
 
               uint64_t Val = std::stol(TestChangedAdressValues.substr(Start, End - Start));
+              std::stringstream SS;
+              std::string ValStr;
+              SS << std::hex << Val;
+              SS >> ValStr;
 
-              ChangedAdressValues[Adr] = Val;
+              MemWrapper.changeValue(Adr, ValStr);
 
           }while(End != -1);
 
@@ -353,16 +358,15 @@ void crash_analyzer::TaintAnalysis::calculateMemAddr(TaintInfo &Ti) {
         // the offset.
         if (eqR.IsDeref) {
           AddrValue += eqR.Offset;
-          if (!Dec || !Dec->getTarget())
-            break;
           lldb::SBError err;
-          Val = Dec->getTarget()->GetProcess().ReadUnsignedFromMemory(AddrValue,
-                                                                      8, err);
 
-          int x = 0;
-          x = x + 8;
+          std::string ValStr = MemWrapper.ReadFromMemory(AddrValue, 8, err);
+          //the value on this address is unknown
+          if(ValStr == "") break;
 
-          if(ChangedAdressValues.count(AddrValue)) Val = ChangedAdressValues[AddrValue];
+          std::stringstream SS;
+          SS << std::hex << ValStr;
+          SS >> Val;
         }
         Val += *Ti.Offset;
         Ti.ConcreteMemoryAddress = Val;
@@ -643,6 +647,7 @@ bool crash_analyzer::TaintAnalysis::getIsCrashAnalyzerTATool() const {
 void crash_analyzer::TaintAnalysis::setDecompiler(
     crash_analyzer::Decompiler *D) {
   Dec = D;
+  MemWrapper.setDecompiler(D);
 }
 Decompiler *crash_analyzer::TaintAnalysis::getDecompiler() const { return Dec; }
 

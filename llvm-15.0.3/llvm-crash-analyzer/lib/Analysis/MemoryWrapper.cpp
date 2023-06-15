@@ -1,0 +1,50 @@
+//===- MemoryWrapper.cpp Track down changed memory locations --------------------===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+
+
+#include "Analysis/MemoryWrapper.h"
+#include <sstream>
+
+using namespace llvm;
+
+#define DEBUG_TYPE "mem-wrapper"
+
+
+crash_analyzer::MemoryWrapper::MemoryWrapper()
+{
+}
+
+std::string crash_analyzer::MemoryWrapper::ReadFromMemory(uint64_t addr, uint32_t byte_size, lldb::SBError& error)
+{
+    std::string StrVal;
+    std::stringstream SS;
+    if(this->ChangedMemoryAdresses.count(addr))
+    {
+        SS << std::hex << this->ChangedMemoryAdresses[addr].str();
+        SS >> StrVal;
+    }
+    else if(this->Dec != nullptr)
+    {
+        uint64_t Val = this->Dec->getTarget()->GetProcess().ReadUnsignedFromMemory(addr, byte_size, error);
+        SS << std::hex << Val;
+        SS >> StrVal;
+    }
+    return StrVal;
+}
+
+
+
+void crash_analyzer::MemoryWrapper::setDecompiler(crash_analyzer::Decompiler* Dec)
+{
+    this->Dec = Dec;
+}
+
+void crash_analyzer::MemoryWrapper::changeValue(uint64_t addr, StringRef val)
+{
+    this->ChangedMemoryAdresses[addr] = val;
+}
