@@ -29,6 +29,7 @@ namespace llvm {
                 std::string ReadFromMemory(uint64_t addr, uint32_t byte_size, lldb::SBError& error);
                 void setDecompiler(Decompiler* Dec);
                 void changeValue(uint64_t addr, StringRef val);
+                void invalidateAddress(uint64_t addr);
 
         };
     }

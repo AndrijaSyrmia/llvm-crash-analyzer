@@ -46,5 +46,12 @@ void crash_analyzer::MemoryWrapper::setDecompiler(crash_analyzer::Decompiler* De
 
 void crash_analyzer::MemoryWrapper::changeValue(uint64_t addr, StringRef val)
 {
+    LLVM_DEBUG(llvm::dbgs() << "Changed the value of address " << addr << " to " << val << "\n";);
     this->ChangedMemoryAdresses[addr] = val;
+}
+
+void crash_analyzer::MemoryWrapper::invalidateAddress(uint64_t addr)
+{
+    LLVM_DEBUG(llvm::dbgs() << "Invalidated address " << addr << "\n");
+    this->ChangedMemoryAdresses[addr] = "";
 }

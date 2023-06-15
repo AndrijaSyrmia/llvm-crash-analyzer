@@ -218,7 +218,36 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
     Register Reg = MO.getReg();
     RegisterWorkList.insert(Reg);
     std::string RegName = TRI->getRegAsmName(Reg).lower();
+    //TODO Trigger only once per store, it will be triggerd twice if storing reg to (reg)+offset
+    if(TII->isStore(MI))
+    {
 
+      auto OptDestSrc = TII->getDestAndSrc(MI);
+      if(OptDestSrc.hasValue())
+      {
+        DestSourcePair& DestSrc = *OptDestSrc;
+
+        if(DestSrc.Destination && MO.getReg() == DestSrc.Destination->getReg())
+        {
+          auto AddrStr = getCurretValueInReg(RegName);
+          if(AddrStr == "") continue;
+
+          uint64_t Addr = 0;
+          std::stringstream SS;
+          SS << std::hex << AddrStr;
+          SS >> Addr;
+
+          if(!DestSrc.DestOffset.hasValue()) continue;
+          Addr += static_cast<uint64_t>(*DestSrc.DestOffset);
+          LLVM_DEBUG(llvm::dbgs() << "Store instruction: " << MI << ", Destination: " << "(" << RegName << ")" << "+" << *DestSrc.DestOffset << "\n";);
+
+          MemWrapper.invalidateAddress(Addr);
+
+
+          continue;
+        }
+      }
+    }
     if (RegisterWorkList.count(Reg) == 1 && MI.modifiesRegister(Reg, TRI)) {
       LLVM_DEBUG(llvm::dbgs() << MI << " modifies " << RegName << "\n";);
       // Here we update the register values.

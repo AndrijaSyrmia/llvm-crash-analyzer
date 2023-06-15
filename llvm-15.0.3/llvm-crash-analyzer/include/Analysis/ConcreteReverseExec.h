@@ -31,6 +31,7 @@ class ConcreteReverseExec {
   // This represents current values in the registers.
   MachineFunction::RegisterCrashInfo currentRegisterValues;
   const MachineFunction *mf;
+  MemoryWrapper& MemWrapper;
 
   CATargetInfo *CATI;
 
@@ -42,8 +43,8 @@ class ConcreteReverseExec {
 public:
   // Init the curr reg values with the values from the 'regInfo' attribute,
   // which are the values read from corefile.
-  ConcreteReverseExec(const MachineFunction *MF)
-      : currentRegisterValues(MF->getCrashRegInfo()), mf(MF) {
+  ConcreteReverseExec(const MachineFunction *MF, MemoryWrapper& MW)
+      : currentRegisterValues(MF->getCrashRegInfo()), mf(MF), MemWrapper(MW) {
     CATI = getCATargetInfoInstance();
     if (MF->getCrashRegInfo().size())
       CREEnabled = true;
