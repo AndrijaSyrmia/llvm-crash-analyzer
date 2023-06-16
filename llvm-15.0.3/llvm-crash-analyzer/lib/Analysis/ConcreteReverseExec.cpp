@@ -240,6 +240,26 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
           if(!DestSrc.DestOffset.hasValue()) continue;
           Addr += static_cast<uint64_t>(*DestSrc.DestOffset);
           LLVM_DEBUG(llvm::dbgs() << "Store instruction: " << MI << ", Destination: " << "(" << RegName << ")" << "+" << *DestSrc.DestOffset << "\n";);
+          lldb::SBError error;
+          std::string MemValStr = MemWrapper.ReadFromMemory(Addr, 8, error);
+          if(MemValStr != "" && DestSrc.Source && !DestSrc.Source2)
+          {
+            if(!DestSrc.Src2Offset.hasValue() && DestSrc.Source->isReg())
+            {
+
+              uint64_t MemVal; 
+              std::istringstream(MemValStr) >> std::hex >> MemVal;
+              std::string SrcRegName = TRI->getRegAsmName(DestSrc.Source->getReg()).lower();
+              auto srcRegVal = getCurretValueInReg(SrcRegName);
+              writeUIntRegVal(SrcRegName, MemVal, srcRegVal.size() - 2);
+
+            }
+            //TODO MEM 2 MEM store if at all possible
+            else if(DestSrc.Src2Offset.hasValue() && DestSrc.Source->isReg())
+            {
+
+            }
+          }
 
           MemWrapper.invalidateAddress(Addr);
 
@@ -283,6 +303,35 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
         writeUIntRegVal(RegName, Val, regVal.size() - 2);
         dump();
         continue;
+      }
+      if(TII->isLoad(MI))
+      {
+        auto OptDestSrc = TII->getDestAndSrc(MI);
+        if(OptDestSrc.hasValue())
+        { 
+          LLVM_DEBUG(llvm::dbgs() << "Load instruction: " << MI;);
+          DestSourcePair& DestSrc = *OptDestSrc;
+
+          if(DestSrc.Source && DestSrc.Source->isReg() && DestSrc.SrcOffset.hasValue())
+          {
+            Register SrcReg = DestSrc.Source->getReg();
+            std::string SrcRegStr = TRI->getRegAsmName(SrcReg).lower();
+            auto srcRegVal = getCurretValueInReg(SrcRegStr);
+            if(srcRegVal == "") continue;
+
+            uint64_t Addr;
+            std::istringstream(srcRegVal) >> std::hex >> Addr;
+            Addr += static_cast<uint64_t>(*DestSrc.SrcOffset);
+
+            LLVM_DEBUG(llvm::dbgs() << "Changed mem address " << Addr << " to " << Val << "\n"; );
+            std::string ValStr;
+            SS << std::hex << Val;
+            SS >> ValStr;
+            MemWrapper.changeValue(Addr, ValStr);
+
+          }
+
+        }
       }
       // FIXME: This isn't right, since current instruction shouldn't
       // be using the new value.

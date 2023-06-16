@@ -14,6 +14,7 @@ using namespace llvm;
 
 #define DEBUG_TYPE "mem-wrapper"
 
+//promeni StrRef u std::string
 
 crash_analyzer::MemoryWrapper::MemoryWrapper()
 {
@@ -27,12 +28,15 @@ std::string crash_analyzer::MemoryWrapper::ReadFromMemory(uint64_t addr, uint32_
     {
         SS << std::hex << this->ChangedMemoryAdresses[addr].str();
         SS >> StrVal;
+        LLVM_DEBUG(llvm::dbgs() << "Addressing changed location: " << addr <<  ":" << StrVal <<"\n";);
     }
     else if(this->Dec != nullptr)
     {
+
         uint64_t Val = this->Dec->getTarget()->GetProcess().ReadUnsignedFromMemory(addr, byte_size, error);
         SS << std::hex << Val;
         SS >> StrVal;
+        LLVM_DEBUG(llvm::dbgs() << "Addressing unchanged location: " << addr <<  ":" << StrVal <<"\n";);
     }
     return StrVal;
 }
