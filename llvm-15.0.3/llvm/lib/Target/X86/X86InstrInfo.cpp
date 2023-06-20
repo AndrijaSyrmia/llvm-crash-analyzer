@@ -4087,6 +4087,9 @@ Optional<RegImmPair> X86InstrInfo::isAddImmediate(const MachineInstr &MI,
     // $eax = ADD32ri8 $eax(tied-def 0), 1
     Offset = MI.getOperand(2).getImm();
     break;
+  case X86::ADD64ri8:
+    Offset = MI.getOperand(2).getImm();
+    break;
   }
   return RegImmPair{MI.getOperand(1).getReg(), Offset};
 }

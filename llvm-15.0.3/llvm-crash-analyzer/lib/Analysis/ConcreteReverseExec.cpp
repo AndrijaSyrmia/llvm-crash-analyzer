@@ -218,7 +218,8 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
     Register Reg = MO.getReg();
     RegisterWorkList.insert(Reg);
     std::string RegName = TRI->getRegAsmName(Reg).lower();
-    //TODO Trigger only once per store, it will be triggerd twice if storing reg to (reg)+offset
+    // TODO: Trigger only once per store, 
+    // it will be triggerd twice if storing reg to (reg)+offset
     if(TII->isStore(MI))
     {
 
@@ -325,6 +326,7 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
 
             LLVM_DEBUG(llvm::dbgs() << "Changed mem address " << Addr << " to " << Val << "\n"; );
             std::string ValStr;
+            std::stringstream SS;
             SS << std::hex << Val;
             SS >> ValStr;
             MemWrapper.changeValue(Addr, ValStr);

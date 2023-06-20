@@ -17,7 +17,7 @@
 
 namespace llvm {
     namespace crash_analyzer {
-        using MemoryAdressMap = std::unordered_map<uint64_t, StringRef>;
+        using MemoryAdressMap = std::unordered_map<uint64_t, std::string>;
 
         class MemoryWrapper{
             private:
@@ -28,9 +28,9 @@ namespace llvm {
                 MemoryWrapper();
                 std::string ReadFromMemory(uint64_t addr, uint32_t byte_size, lldb::SBError& error);
                 void setDecompiler(Decompiler* Dec);
-                void changeValue(uint64_t addr, StringRef val);
+                void changeValue(uint64_t addr, std::string val);
                 void invalidateAddress(uint64_t addr);
-
+                void dumpChangedMemory();
         };
     }
 }
