@@ -361,13 +361,11 @@ void crash_analyzer::TaintAnalysis::calculateMemAddr(TaintInfo &Ti) {
           AddrValue += eqR.Offset;
           lldb::SBError err;
 
-          std::string ValStr = MemWrapper.ReadUnsignedFromMemory(AddrValue, 8, err);
+          Optional<uint64_t> ValOptional = MemWrapper.ReadUnsignedFromMemory(AddrValue, 8, err);
           //the value on this address is unknown
-          if(ValStr == "") break;
+          if(!ValOptional.hasValue()) break;
 
-          std::stringstream SS;
-          SS << std::hex << ValStr;
-          SS >> Val;
+          Val = *ValOptional;
         }
         Val += *Ti.Offset;
         Ti.ConcreteMemoryAddress = Val;

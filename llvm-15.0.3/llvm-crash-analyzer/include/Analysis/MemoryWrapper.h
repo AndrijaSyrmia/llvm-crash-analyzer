@@ -27,7 +27,7 @@ namespace llvm {
 
             public:
                 MemoryWrapper();
-                std::string ReadUnsignedFromMemory(uint64_t addr, uint32_t byte_size, lldb::SBError& error);
+                Optional<uint64_t> ReadUnsignedFromMemory(uint64_t addr, uint32_t byte_size, lldb::SBError& error);
                 void setDecompiler(Decompiler* Dec);
                 void WriteMemory(uint64_t addr, const void* buf, size_t size, lldb::SBError& error);
                 void invalidateAddress(uint64_t addr, size_t size);

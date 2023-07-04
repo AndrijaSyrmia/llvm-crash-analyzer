@@ -21,7 +21,7 @@ crash_analyzer::MemoryWrapper::MemoryWrapper()
 }
 
 //Little endian
-std::string crash_analyzer::MemoryWrapper::ReadUnsignedFromMemory(uint64_t addr, uint32_t byte_size, lldb::SBError& error)
+Optional<uint64_t> crash_analyzer::MemoryWrapper::ReadUnsignedFromMemory(uint64_t addr, uint32_t byte_size, lldb::SBError& error)
 {
 
     assert(byte_size <= 8 && "Can't read more than 8 bytes for now!");
@@ -54,7 +54,7 @@ std::string crash_analyzer::MemoryWrapper::ReadUnsignedFromMemory(uint64_t addr,
             }
             llvm::dbgs() << "Addressing invalid location: " << "0x" << AddrVal <<  ", byte size: " << byte_size << "\n";
             );
-            return StrVal;
+            return None;
         }
         else{
             Val = ((this->InvalidMemoryAddresses[alignedAddr].second & (-1UL >> (NUM_OF_BYTES_PER_ADDRESS - byte_size - alignmentOffset) * 8) )  >> (alignmentOffset * 8));
@@ -95,7 +95,7 @@ std::string crash_analyzer::MemoryWrapper::ReadUnsignedFromMemory(uint64_t addr,
             }
             llvm::dbgs() << "Addressing invalid location: " << "0x" << AddrVal <<  ", byte size: " << byte_size << "\n";
             );
-            return StrVal;
+            return None;
         }
         else{
             Val = (this->InvalidMemoryAddresses[alignedAddr].second >> (8 * alignmentOffset)) + 
@@ -107,7 +107,7 @@ std::string crash_analyzer::MemoryWrapper::ReadUnsignedFromMemory(uint64_t addr,
         Val = this->Dec->getTarget()->GetProcess().ReadUnsignedFromMemory(addr, byte_size, error);
     }
     else{
-        return "";
+        return None;
     }
     SS.clear();
     SS << std::hex << Val;
@@ -129,7 +129,7 @@ std::string crash_analyzer::MemoryWrapper::ReadUnsignedFromMemory(uint64_t addr,
         }
         llvm::dbgs() << "Addressing valid location: " << "0x" << AddrVal <<  " : " << "0x" << StrVal << ", byte_size: " << byte_size <<"\n";
         );
-    return StrVal;
+    return Val;
 }
 
 

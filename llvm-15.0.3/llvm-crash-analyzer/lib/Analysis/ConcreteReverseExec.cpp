@@ -268,15 +268,14 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
             byteSize = (*BitSize) / 8 + (*BitSize % 8 ? 1 : 0);
           } 
           
-          std::string MemValStr = MemWrapper.ReadUnsignedFromMemory(Addr, byteSize, error);
+          Optional<uint64_t> MemValOptional = MemWrapper.ReadUnsignedFromMemory(Addr, byteSize, error);
           llvm::dbgs() << error.GetCString() << "\n";
-          if(MemValStr != "" && DestSrc.Source && !DestSrc.Source2)
+          if(MemValOptional.hasValue() && DestSrc.Source && !DestSrc.Source2)
           {
             if(!DestSrc.Src2Offset.hasValue() && DestSrc.Source->isReg())
             {
 
-              uint64_t MemVal; 
-              std::istringstream(MemValStr) >> std::hex >> MemVal;
+              uint64_t MemVal = *MemValOptional; 
               std::string SrcRegName = TRI->getRegAsmName(DestSrc.Source->getReg()).lower();
               auto srcRegVal = getCurretValueInReg(SrcRegName);
               writeUIntRegVal(SrcRegName, MemVal, byteSize * 2);
@@ -346,7 +345,7 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
             std::istringstream(srcRegVal) >> std::hex >> Addr;
             Addr += static_cast<uint64_t>(*DestSrc.SrcOffset);
 
-            LLVM_DEBUG(llvm::dbgs() << "Changed mem address " << Addr << " to " << Val << "\n"; );
+            // LLVM_DEBUG(llvm::dbgs() << "Changed mem address " << Addr << " to " << Val << "\n"; );
 
             uint32_t bitSize = TRI->getRegSizeInBits(DestSrc.Source->getReg(), MRI);
             uint32_t byteSize =  bitSize / 8 + (bitSize % 8 ? 1 : 0);
