@@ -340,6 +340,13 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
             std::string SrcRegStr = TRI->getRegAsmName(SrcReg).lower();
             auto srcRegVal = getCurretValueInReg(SrcRegStr);
             if(srcRegVal == "") continue;
+            // Cannot know value of memory if loading reg from (reg)offset
+            if(DestSrc.Source->getReg() == Reg)
+            {
+              invalidateRegVal(RegName);
+              dump();
+              continue;
+            }
 
             uint64_t Addr;
             std::istringstream(srcRegVal) >> std::hex >> Addr;
@@ -352,6 +359,7 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
 
             lldb::SBError error;
             MemWrapper.WriteMemory(Addr, &Val, byteSize, error);
+            invalidateRegVal(RegName);
             dump();
             continue;
 
