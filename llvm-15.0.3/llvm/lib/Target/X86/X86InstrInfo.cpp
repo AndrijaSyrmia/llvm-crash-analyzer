@@ -10206,5 +10206,38 @@ X86InstrInfo::insertOutlinedCall(Module &M, MachineBasicBlock &MBB,
   return It;
 }
 
+Optional<uint32_t> X86InstrInfo::getBitSizeOfMemoryDestination(const MachineInstr& MI) const
+{
+  if(!this->isStore(MI))
+  {
+     return None;
+  }
+
+  switch(MI.getOpcode())
+  {
+    case X86::MOV8mi:
+    case X86::MOV8mr:
+        return 8;
+        break;
+    case X86::MOV16mi:
+    case X86::MOV16mr:
+      return 16;
+      break;
+    
+    case X86::MOV32mi:
+    case X86::MOV32mr:
+      return 32;
+      break;
+    
+    // case X86::MOV64mi:
+    case X86::MOV64mi32:
+    case X86::MOV64mr:
+      return 64;
+      break;
+  }
+
+  return None;
+}
+
 #define GET_INSTRINFO_HELPERS
 #include "X86GenInstrInfo.inc"

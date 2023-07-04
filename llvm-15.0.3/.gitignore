@@ -69,7 +69,6 @@ pythonenv*
 /clang/utils/analyzer/projects/*/ScanBuildResults
 
 build.sh
-careless_build.sh
 .*
 zezanje.sh
 zezanje2.sh

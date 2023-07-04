@@ -17,20 +17,21 @@
 
 namespace llvm {
     namespace crash_analyzer {
-        using MemoryAdressMap = std::unordered_map<uint64_t, std::string>;
-
+        using MemoryValidityMap = std::unordered_map<uint64_t, std::pair<uint8_t, uint64_t> >;
+        
         class MemoryWrapper{
             private:
+                static const uint8_t NUM_OF_BYTES_PER_ADDRESS = 8;
                 Decompiler* Dec = nullptr;
-                MemoryAdressMap ChangedMemoryAdresses; 
+                MemoryValidityMap InvalidMemoryAddresses; 
 
             public:
                 MemoryWrapper();
-                std::string ReadFromMemory(uint64_t addr, uint32_t byte_size, lldb::SBError& error);
+                std::string ReadUnsignedFromMemory(uint64_t addr, uint32_t byte_size, lldb::SBError& error);
                 void setDecompiler(Decompiler* Dec);
-                void changeValue(uint64_t addr, std::string val);
-                void invalidateAddress(uint64_t addr);
-                void dumpChangedMemory();
+                void WriteMemory(uint64_t addr, const void* buf, size_t size, lldb::SBError& error);
+                void invalidateAddress(uint64_t addr, size_t size);
+                void dump();
         };
     }
 }

@@ -269,12 +269,13 @@ crash_analyzer::TaintAnalysis::TaintAnalysis(
               }
 
               uint64_t Val = std::stol(TestChangedAdressValues.substr(Start, End - Start));
-              std::stringstream SS;
-              std::string ValStr;
-              SS << std::hex << Val;
-              SS >> ValStr;
+              // std::stringstream SS;
+              // std::string ValStr;
+              // SS << std::hex << Val;
+              // SS >> ValStr;
 
-              MemWrapper.changeValue(Adr, ValStr);
+            lldb::SBError error;
+            MemWrapper.WriteMemory(Adr, &Val, 8, error);
 
           }while(End != -1);
 
@@ -360,7 +361,7 @@ void crash_analyzer::TaintAnalysis::calculateMemAddr(TaintInfo &Ti) {
           AddrValue += eqR.Offset;
           lldb::SBError err;
 
-          std::string ValStr = MemWrapper.ReadFromMemory(AddrValue, 8, err);
+          std::string ValStr = MemWrapper.ReadUnsignedFromMemory(AddrValue, 8, err);
           //the value on this address is unknown
           if(ValStr == "") break;
 

@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <set>
 #include <sstream>
+#include "llvm/CodeGen/GlobalISel/GISelKnownBits.h"
 
 #define DEBUG_TYPE "conrecete-rev-exec"
 
@@ -207,9 +208,15 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
   // is the latest def actually by going forward).
   auto TRI = MI.getParent()->getParent()->getSubtarget().getRegisterInfo();
   auto TII = MI.getParent()->getParent()->getSubtarget().getInstrInfo();
+  
+  auto& MRI = MI.getMF()->getRegInfo();
+  const MachineFunction& MF = *MI.getMF();
+  
 
+  // auto MRI = MI.getParent()->getParent();
   // This will be used to avoid implicit operands that can be in the instruction
   // multiple times.
+
   std::multiset<Register> RegisterWorkList;
 
   for (const MachineOperand &MO : MI.operands()) {
@@ -228,6 +235,7 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
       {
         DestSourcePair& DestSrc = *OptDestSrc;
 
+
         if(DestSrc.Destination && MO.getReg() == DestSrc.Destination->getReg())
         {
           auto AddrStr = getCurretValueInReg(RegName);
@@ -238,11 +246,30 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
           SS << std::hex << AddrStr;
           SS >> Addr;
 
+
           if(!DestSrc.DestOffset.hasValue()) continue;
           Addr += static_cast<uint64_t>(*DestSrc.DestOffset);
           LLVM_DEBUG(llvm::dbgs() << "Store instruction: " << MI << ", Destination: " << "(" << RegName << ")" << "+" << *DestSrc.DestOffset << "\n";);
           lldb::SBError error;
-          std::string MemValStr = MemWrapper.ReadFromMemory(Addr, 8, error);
+          uint32_t byteSize = 8; // invalidate 8 bytes if size of instruction is not known
+          
+          // TODO: Find a way to invalidate other sizes when reg is not src
+          // llvm::outs() << TII->getName(MI.getOpcode()) << "\n";
+
+          // if(DestSrc.Source->isReg())
+          // {
+          //   uint32_t bitSize = TRI->getRegSizeInBits(DestSrc.Source->getReg(), MRI);
+          //   byteSize =  bitSize / 8 + (bitSize % 8 ? 1 : 0);
+          // }
+
+          Optional<uint32_t> BitSize = TII->getBitSizeOfMemoryDestination(MI);
+          if(BitSize.hasValue())
+          {
+            byteSize = (*BitSize) / 8 + (*BitSize % 8 ? 1 : 0);
+          } 
+          
+          std::string MemValStr = MemWrapper.ReadUnsignedFromMemory(Addr, byteSize, error);
+          llvm::dbgs() << error.GetCString() << "\n";
           if(MemValStr != "" && DestSrc.Source && !DestSrc.Source2)
           {
             if(!DestSrc.Src2Offset.hasValue() && DestSrc.Source->isReg())
@@ -252,18 +279,13 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
               std::istringstream(MemValStr) >> std::hex >> MemVal;
               std::string SrcRegName = TRI->getRegAsmName(DestSrc.Source->getReg()).lower();
               auto srcRegVal = getCurretValueInReg(SrcRegName);
-              writeUIntRegVal(SrcRegName, MemVal, srcRegVal.size() - 2);
-
-            }
-            //TODO MEM 2 MEM store if at all possible
-            else if(DestSrc.Src2Offset.hasValue() && DestSrc.Source->isReg())
-            {
+              writeUIntRegVal(SrcRegName, MemVal, byteSize * 2);
 
             }
           }
 
-          MemWrapper.invalidateAddress(Addr);
-
+          MemWrapper.invalidateAddress(Addr, byteSize);
+          dump();
 
           continue;
         }
@@ -325,11 +347,14 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
             Addr += static_cast<uint64_t>(*DestSrc.SrcOffset);
 
             LLVM_DEBUG(llvm::dbgs() << "Changed mem address " << Addr << " to " << Val << "\n"; );
-            std::string ValStr;
-            std::stringstream SS;
-            SS << std::hex << Val;
-            SS >> ValStr;
-            MemWrapper.changeValue(Addr, ValStr);
+
+            uint32_t bitSize = TRI->getRegSizeInBits(DestSrc.Source->getReg(), MRI);
+            uint32_t byteSize =  bitSize / 8 + (bitSize % 8 ? 1 : 0);
+
+            lldb::SBError error;
+            MemWrapper.WriteMemory(Addr, &Val, byteSize, error);
+            dump();
+            continue;
 
           }
 
