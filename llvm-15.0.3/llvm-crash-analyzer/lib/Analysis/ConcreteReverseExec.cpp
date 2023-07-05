@@ -227,6 +227,19 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
     std::string RegName = TRI->getRegAsmName(Reg).lower();
     // TODO: Trigger only once per store, 
     // it will be triggerd twice if storing reg to (reg)+offset
+    if(TII->isPush(MI))
+    {
+      auto OptDestSrc = TII->getDestAndSrc(MI);
+      if(OptDestSrc.hasValue())
+      {
+        DestSourcePair& DestSrc = *OptDestSrc;
+        // llvm::outs() << "First operand: " << MI.getOperand(0) << "\n";
+        // llvm::outs() << "Second operand: " << MI.getOperand(1) << "\n"; 
+        llvm::outs() << "Src: " << DestSrc.Source << "\n";
+        llvm::outs() << "Dest: " << DestSrc.Destination << "\n";
+      }
+
+    }
     if(TII->isStore(MI))
     {
 
