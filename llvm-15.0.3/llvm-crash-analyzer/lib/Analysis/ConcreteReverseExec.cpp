@@ -210,7 +210,6 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
   auto TII = MI.getParent()->getParent()->getSubtarget().getInstrInfo();
   
   auto& MRI = MI.getMF()->getRegInfo();
-  const MachineFunction& MF = *MI.getMF();
   
 
   // auto MRI = MI.getParent()->getParent();
