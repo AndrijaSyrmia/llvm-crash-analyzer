@@ -211,7 +211,6 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
   
   auto& MRI = MI.getMF()->getRegInfo();
   
-
   // auto MRI = MI.getParent()->getParent();
   // This will be used to avoid implicit operands that can be in the instruction
   // multiple times.

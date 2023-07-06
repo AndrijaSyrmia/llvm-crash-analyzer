@@ -21,11 +21,12 @@ namespace llvm {
         
         class MemoryWrapper{
             private:
-                static const uint8_t NUM_OF_BYTES_PER_ADDRESS = 8;
+
                 Decompiler* Dec = nullptr;
                 MemoryValidityMap InvalidMemoryAddresses; 
 
             public:
+                static const uint8_t NUM_OF_BYTES_PER_ADDRESS = 8;
                 MemoryWrapper();
                 Optional<uint64_t> ReadUnsignedFromMemory(uint64_t addr, uint32_t byte_size, lldb::SBError& error);
                 void setDecompiler(Decompiler* Dec);

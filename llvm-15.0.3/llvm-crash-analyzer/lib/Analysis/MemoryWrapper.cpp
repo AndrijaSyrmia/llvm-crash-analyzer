@@ -98,8 +98,15 @@ Optional<uint64_t> crash_analyzer::MemoryWrapper::ReadUnsignedFromMemory(uint64_
             return None;
         }
         else{
-            Val = (this->InvalidMemoryAddresses[alignedAddr].second >> (8 * alignmentOffset)) + 
-            ((this->InvalidMemoryAddresses[alignedAddr + NUM_OF_BYTES_PER_ADDRESS].second & (-1UL >> (NUM_OF_BYTES_PER_ADDRESS - byte_size) * 8 ) << alignmentOffset * 8));
+            Val = 
+            (this->InvalidMemoryAddresses[alignedAddr].second >> (8 * alignmentOffset)) |
+            (
+                (
+                    (this->InvalidMemoryAddresses[alignedAddr + NUM_OF_BYTES_PER_ADDRESS].second & 
+                    (-1UL >> (NUM_OF_BYTES_PER_ADDRESS - alignmentOffset + NUM_OF_BYTES_PER_ADDRESS - byte_size) * 8 )) <<
+                    (NUM_OF_BYTES_PER_ADDRESS - alignmentOffset) * 8
+                )
+            );
         }
     }
 
@@ -144,6 +151,7 @@ void crash_analyzer::MemoryWrapper::WriteMemory(uint64_t addr, const void* buf, 
     uint64_t alignmentOffset = addr % NUM_OF_BYTES_PER_ADDRESS;
     uint64_t alignedAddr = addr - alignmentOffset;
     std::stringstream SS;
+    bool notLoadedYet = true;
     for(uint32_t i = 0; i < size; i += NUM_OF_BYTES_PER_ADDRESS)
     {
         uint8_t mask = 0xFF;
@@ -155,6 +163,7 @@ void crash_analyzer::MemoryWrapper::WriteMemory(uint64_t addr, const void* buf, 
                 mask &= 0xFFU >> ( i + NUM_OF_BYTES_PER_ADDRESS - alignmentOffset - size);
             }
             this->InvalidMemoryAddresses[alignedAddr].first |= mask;
+            notLoadedYet = false;
         }
         else{
             this->InvalidMemoryAddresses[alignedAddr] = {0xFF, 0};
@@ -189,17 +198,19 @@ void crash_analyzer::MemoryWrapper::WriteMemory(uint64_t addr, const void* buf, 
                 }
             }
             lldb::SBError err;
-            this->InvalidMemoryAddresses[alignedAddr].second = (Val << 8 * alignmentOffset);
-            if(alignmentOffset > 0 && this->Dec != nullptr)
+            this->InvalidMemoryAddresses[alignedAddr].second &= 
+            ~(((-1UL  << 8 * alignmentOffset))  >> (NUM_OF_BYTES_PER_ADDRESS - size + i - alignmentOffset) * 8);
+            this->InvalidMemoryAddresses[alignedAddr].second |= (Val << 8 * alignmentOffset);
+            if(alignmentOffset > 0 && this->Dec != nullptr && notLoadedYet)
             {
                 this->InvalidMemoryAddresses[alignedAddr].second += 
                 this->Dec->getTarget()->GetProcess().ReadUnsignedFromMemory(alignedAddr, alignmentOffset, err); 
             }
-            else{
-                this->InvalidMemoryAddresses[alignedAddr].first &=
-                0xFFU << alignmentOffset;
-            }
-            if(size - i < NUM_OF_BYTES_PER_ADDRESS - alignmentOffset && this->Dec != nullptr)
+            // else{
+            //     this->InvalidMemoryAddresses[alignedAddr].first &=
+            //     0xFFU << alignmentOffset;
+            // }
+            if(size - i < NUM_OF_BYTES_PER_ADDRESS - alignmentOffset && this->Dec != nullptr && notLoadedYet)
             {
                 // For testing without decompiler
                 this->InvalidMemoryAddresses[alignedAddr].second += 
@@ -207,11 +218,11 @@ void crash_analyzer::MemoryWrapper::WriteMemory(uint64_t addr, const void* buf, 
                 .ReadUnsignedFromMemory(alignedAddr + alignmentOffset + size - i, NUM_OF_BYTES_PER_ADDRESS - alignmentOffset - size + i, err) 
                 << (alignmentOffset + size - i) * 8;
             }
-            else{
-                // For testing without decompiler
-                this->InvalidMemoryAddresses[alignedAddr].first &=
-                0xFFU >> (NUM_OF_BYTES_PER_ADDRESS - (alignmentOffset + size - i));
-            }
+            // else{
+            //     // For testing without decompiler
+            //     this->InvalidMemoryAddresses[alignedAddr].first &=
+            //     0xFFU >> (NUM_OF_BYTES_PER_ADDRESS - (alignmentOffset + size - i));
+            // }
 
 
     LLVM_DEBUG(
@@ -263,10 +274,10 @@ void crash_analyzer::MemoryWrapper::invalidateAddress(uint64_t addr, size_t size
     uint64_t alignmentOffset = addr % NUM_OF_BYTES_PER_ADDRESS;
     uint64_t alignedAddr = addr - alignmentOffset;
     std::stringstream SS;
+    bool notLoadedYet = false;
     for(uint32_t i = 0; i < size; i += NUM_OF_BYTES_PER_ADDRESS)
     {
-        uint8_t mask = 0xFF;
-        mask = (0xFFU >> (NUM_OF_BYTES_PER_ADDRESS - alignmentOffset));
+        uint8_t mask = (0xFFU >> (NUM_OF_BYTES_PER_ADDRESS - alignmentOffset));
         if( i + NUM_OF_BYTES_PER_ADDRESS - alignmentOffset > size)
         {
             mask |= 0xFFU << (alignmentOffset + size - i);
@@ -274,16 +285,17 @@ void crash_analyzer::MemoryWrapper::invalidateAddress(uint64_t addr, size_t size
         if(this->InvalidMemoryAddresses.count(alignedAddr) == 0)
         {
             this->InvalidMemoryAddresses[alignedAddr] = {0xFF, 0};
+            notLoadedYet = true;
         }
         this->InvalidMemoryAddresses[alignedAddr].first &= mask;
 
 
         // this->InvalidMemoryAddresses[alignedAddr].second = (Val << 8 * alignmentOffset);
         lldb::SBError err;
-        if(alignmentOffset > 0 && this->Dec != nullptr)
+        if(alignmentOffset > 0 && this->Dec != nullptr && notLoadedYet)
             this->InvalidMemoryAddresses[alignedAddr].second += this->Dec->getTarget()->GetProcess().ReadUnsignedFromMemory(alignedAddr, alignmentOffset, err); 
 
-        if(size - i < NUM_OF_BYTES_PER_ADDRESS - alignmentOffset && this->Dec != nullptr)
+        if(size - i < NUM_OF_BYTES_PER_ADDRESS - alignmentOffset && this->Dec != nullptr && notLoadedYet)
         {
             this->InvalidMemoryAddresses[alignedAddr].second += this->Dec->getTarget()->GetProcess().ReadUnsignedFromMemory(alignedAddr + alignmentOffset + size - i, NUM_OF_BYTES_PER_ADDRESS - alignmentOffset - size + i, err) << (alignmentOffset + size - i) * 8;
         }
