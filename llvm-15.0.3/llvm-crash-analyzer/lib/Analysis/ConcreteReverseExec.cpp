@@ -197,6 +197,53 @@ void ConcreteReverseExec::updatePC(const MachineInstr &MI) {
   dump();
 }
 
+
+std::string ConcreteReverseExec::getEqRegValue(MachineInstr* MI, Register& Reg, const TargetRegisterInfo& TRI)
+{
+  std::string RetVal = "";
+
+  if(REAnalysis)
+  {
+    auto EqRegisters = REAnalysis->getEqRegsAfterMI(MI, {Reg});
+    for(auto& RegOffset: EqRegisters)
+    {
+      if(RegOffset.RegNum == Reg.id()) continue;
+      if(RegOffset.IsDeref)
+      {
+        std::string EqRegName = TRI.getRegAsmName(RegOffset.RegNum).lower();
+        auto BaseStr = getCurretValueInReg(EqRegName);
+        if(BaseStr != "")
+        {
+          uint64_t BaseAddr = 0;
+          std::stringstream SS;
+          SS << std::hex << BaseStr;
+          SS >> BaseAddr;
+
+          BaseAddr += RegOffset.Offset;
+          lldb::SBError error;
+
+          auto ValOpt = MemWrapper.ReadUnsignedFromMemory(BaseAddr, 8, error);
+          if(ValOpt.hasValue())
+          {
+            SS.clear();
+            SS << std::hex << *ValOpt;
+            SS >> RetVal;
+            break;
+          }
+        }
+      }
+      else
+      {
+        std::string EqRegName = TRI.getRegAsmName(RegOffset.RegNum).lower();
+        RetVal = getCurretValueInReg(EqRegName);
+        if(RetVal != "") break;
+      }
+    }
+  }
+
+  return RetVal;
+}
+
 void ConcreteReverseExec::execute(const MachineInstr &MI) {
   // If the option is enabled, we skip the CRE of the MIs.
   if (!getIsCREEnabled())
@@ -239,7 +286,11 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
           alreadyStored = true;
 
           auto AddrStr = getCurretValueInReg(RegName);
-          if(AddrStr == "") continue;
+          if(AddrStr == "") 
+          {
+            AddrStr = getEqRegValue(const_cast<MachineInstr*>(&MI), {Reg}, *TRI);
+            if(AddrStr == "") continue;
+          }
 
           uint64_t Addr = 0;
           std::stringstream SS;
@@ -250,12 +301,13 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
 
           if(TII->isStore(MI))
           {
-            // Stack is already aligned on its address
+
             Addr += static_cast<uint64_t>(*DestSrc.DestOffset);
             LLVM_DEBUG(llvm::dbgs() << "Store instruction: " << MI << ", Destination: " << "(" << RegName << ")" << "+" << *DestSrc.DestOffset << "\n";);
           }
           else if(TII->isPush(MI))
           {
+            // Stack is already aligned on its address
             LLVM_DEBUG(llvm::dbgs() << "Push instruction: " << MI << ", Destination: " << "(" << RegName << ")" << "+" << *DestSrc.DestOffset << "\n";);
           }
           lldb::SBError error;
@@ -305,8 +357,12 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
       // FIXME: Is this right?
       auto regVal = getCurretValueInReg(RegName);
       if (regVal == "")
+      {
+        // FIXME: No use of register equivalence here, is that right?
+        // regVal = getEqRegValue(const_cast<MachineInstr*>(&MI), Reg, *TRI);
+        // if(regVal == "") continue;
         continue;
-
+      }
       // Skip push/pop intructions here.
       if (TII->isPush(MI) || TII->isPop(MI))
         continue;
@@ -341,13 +397,33 @@ void ConcreteReverseExec::execute(const MachineInstr &MI) {
             Register SrcReg = DestSrc.Source->getReg();
             std::string SrcRegStr = TRI->getRegAsmName(SrcReg).lower();
             auto srcRegVal = getCurretValueInReg(SrcRegStr);
-            if(srcRegVal == "") continue;
-            // Cannot know value of memory if loading reg from (reg)offset
+            if(srcRegVal == "")
+            { 
+              srcRegVal = getEqRegValue(const_cast<MachineInstr*>(&MI), SrcReg, *TRI);
+              if(srcRegVal == "") continue;
+            }
+
+            // Cannot know value of memory if loading reg from (reg)offset, unless cre has some equivalent registers
             if(DestSrc.Source->getReg() == Reg)
             {
-              invalidateRegVal(RegName);
-              dump();
-              continue;
+              // TO DO: Machine Instr at the beginning of basic block
+              if(MI.getIterator() != MI.getParent()->begin())
+              {
+                // TO DO: Check if this is right in all situations
+                srcRegVal = getEqRegValue(const_cast<MachineInstr*>(&*std::prev(MI.getIterator())), Reg, *TRI);
+                if(srcRegVal == "")
+                {
+                  invalidateRegVal(RegName);
+                  dump();
+                  continue;
+                }
+              }
+              else
+              {
+                invalidateRegVal(RegName);
+                dump();
+                continue;
+              }
             }
 
             uint64_t Addr;

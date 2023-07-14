@@ -722,8 +722,12 @@ bool crash_analyzer::TaintAnalysis::handleGlobalVar(TaintInfo &Ti) {
   // Read global symbol address from Global Offset Table.
   if (Indirect) {
     lldb::SBError err;
-    VarAddr = Dec->getTarget()->GetProcess().ReadUnsignedFromMemory(
-        static_cast<uint64_t>(VarAddr), 8, err);
+
+    // VarAddr = Dec->getTarget()->GetProcess().ReadUnsignedFromMemory(
+        // static_cast<uint64_t>(VarAddr), 8, err);
+    auto VarAddrOpt = MemWrapper.ReadUnsignedFromMemory(static_cast<uint64_t>(VarAddr), 8, err);
+    if(!VarAddrOpt.hasValue()) return false;
+    VarAddr = *VarAddrOpt;
   }
 
   auto SBTarget = Dec->getTarget();
@@ -1078,7 +1082,7 @@ bool crash_analyzer::TaintAnalysis::runOnBlameMF(
   setREAnalysis(&REAnalysis);
 
   // Init the concrete reverse execution.
-  ConcreteReverseExec ReverseExecutionRecord(&MF, MemWrapper);
+  ConcreteReverseExec ReverseExecutionRecord(&MF, MemWrapper, &REAnalysis);
   setCRE(&ReverseExecutionRecord);
   ReverseExecutionRecord.dump();
 
