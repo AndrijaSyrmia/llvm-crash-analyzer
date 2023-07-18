@@ -23,7 +23,7 @@ namespace llvm {
             private:
 
                 Decompiler* Dec = nullptr;
-                MemoryValidityMap InvalidMemoryAddresses; 
+                MemoryValidityMap ChangedMemoryAddresses; 
 
             public:
                 static const uint8_t NUM_OF_BYTES_PER_ADDRESS = 8;
@@ -31,7 +31,7 @@ namespace llvm {
                 Optional<uint64_t> ReadUnsignedFromMemory(uint64_t addr, uint32_t byte_size, lldb::SBError& error);
                 void setDecompiler(Decompiler* Dec);
                 void WriteMemory(uint64_t addr, const void* buf, size_t size, lldb::SBError& error);
-                void invalidateAddress(uint64_t addr, size_t size);
+                void InvalidateAddress(uint64_t addr, size_t size);
                 void dump();
         };
     }

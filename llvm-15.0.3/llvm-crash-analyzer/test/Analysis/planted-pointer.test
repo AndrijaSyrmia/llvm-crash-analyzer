@@ -29,8 +29,8 @@
 #    return 0;
 #}
 
-# RUN: %llvm-crash-analyzer --core-file=%S/Inputs/core.planted_pointer \
-# RUN: %S/Inputs/planted_pointer --print-potential-crash-cause-loc \
+# RUN: %llvm-crash-analyzer --core-file=%S/Inputs/core.planted-pointer \
+# RUN: %S/Inputs/planted-pointer --print-potential-crash-cause-loc \
 # RUN: --debug-only=mem-wrapper 2>&1 | FileCheck %s
 
 # CHECK: Invalidating location: 0x00007ffc21d1a850, byte_size: 8

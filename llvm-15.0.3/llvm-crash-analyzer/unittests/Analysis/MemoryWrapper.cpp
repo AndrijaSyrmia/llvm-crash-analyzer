@@ -56,7 +56,7 @@ TEST(MemWrapper, ReadingWritingAligned)
 
     ADDR = 0x00000000DD000000;
 
-    MemWrapper.invalidateAddress(ADDR, 8);
+    MemWrapper.InvalidateAddress(ADDR, 8);
 
     MemWrapper.WriteMemory(ADDR, &VAL_BYTE, 1, err);
     Val = MemWrapper.ReadUnsignedFromMemory(ADDR, 1, err);
@@ -102,24 +102,24 @@ TEST(MemWrapper, InvalidatingAligned)
     lldb::SBError err;
     MemWrapper.WriteMemory(ADDR, &VAL_BYTE, 1, err);
 
-    MemWrapper.invalidateAddress(ADDR, 1);
+    MemWrapper.InvalidateAddress(ADDR, 1);
     auto Val = MemWrapper.ReadUnsignedFromMemory(ADDR, 1, err);
     ASSERT_FALSE(Val.hasValue());
 
     MemWrapper.WriteMemory(ADDR, &VAL_SHORT, 2, err);
-    MemWrapper.invalidateAddress(ADDR, 2);
+    MemWrapper.InvalidateAddress(ADDR, 2);
     Val = MemWrapper.ReadUnsignedFromMemory(ADDR, 2, err);
     ASSERT_FALSE(Val.hasValue());
 
 
 
     MemWrapper.WriteMemory(ADDR, &VAL_INT, 4, err);
-    MemWrapper.invalidateAddress(ADDR, 4);
+    MemWrapper.InvalidateAddress(ADDR, 4);
     Val = MemWrapper.ReadUnsignedFromMemory(ADDR, 4, err);
     ASSERT_FALSE(Val.hasValue());
 
     MemWrapper.WriteMemory(ADDR, &VAL, 8, err);
-    MemWrapper.invalidateAddress(ADDR, 8);
+    MemWrapper.InvalidateAddress(ADDR, 8);
     Val = MemWrapper.ReadUnsignedFromMemory(ADDR, 8, err);
     ASSERT_FALSE(Val.hasValue());
 
@@ -132,8 +132,8 @@ TEST(MemWrapper, Unaligned)
 
     MemoryWrapper MemWrapper;
     lldb::SBError err;
-    MemWrapper.invalidateAddress(ADDR, 8);
-    MemWrapper.invalidateAddress(ADDR + MemoryWrapper::NUM_OF_BYTES_PER_ADDRESS, 8);
+    MemWrapper.InvalidateAddress(ADDR, 8);
+    MemWrapper.InvalidateAddress(ADDR + MemoryWrapper::NUM_OF_BYTES_PER_ADDRESS, 8);
     MemWrapper.WriteMemory(ADDR + 3, &VAL, 8, err);
     auto Val = MemWrapper.ReadUnsignedFromMemory(ADDR + 3, 8, err);
     ASSERT_TRUE(Val.hasValue());
@@ -154,7 +154,7 @@ TEST(MemWrapper, Unaligned)
     ASSERT_TRUE(Val.hasValue());
     ASSERT_TRUE(*Val == (VAL >> 5 * 8));
 
-    MemWrapper.invalidateAddress(ADDR + 6, 3);
+    MemWrapper.InvalidateAddress(ADDR + 6, 3);
 
     Val = MemWrapper.ReadUnsignedFromMemory(ADDR + 6, 1, err);
     ASSERT_FALSE(Val.hasValue());
