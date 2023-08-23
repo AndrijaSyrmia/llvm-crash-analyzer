@@ -131,6 +131,8 @@ void TaintDataFlowGraph::findBlameFunction(Node *v) {
             auto &BlameNodes = blameNodes[MaxLevel];
             for (unsigned i = 0; i < BlameNodes.size(); i++) {
               auto &a = BlameNodes[i];
+              if(a->TaintOp.DerefLevel != adjNode->TaintOp.DerefLevel)
+                continue;
               if (a->MI->getParent() == adjNode->MI->getParent() &&
                   !a->CallMI && !adjNode->CallMI) {
                 if (MDT->dominates(adjNode->MI, a->MI)) {
