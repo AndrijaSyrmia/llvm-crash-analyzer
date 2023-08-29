@@ -39,16 +39,22 @@ static cl::opt<std::string>
                   cl::desc("Explicitlly set start Taint Info offset."),
                   cl::value_desc("start_off"), cl::init(""));
 // Use -start-taint-deref-lvl to specify deref level to the memory location.
-static cl::opt<std::string>
-    StartTaintDerefLevel("start-taint-deref-lvl",
-                  cl::desc("Explicitlly set start Taint Info deref level."),
-                  cl::value_desc("start_deref_lvl"), cl::init(""));
+static cl::opt<std::string> StartTaintDerefLevel(
+    "start-taint-deref-lvl",
+    cl::desc("Explicitlly set start Taint Info deref level."),
+    cl::value_desc("start_deref_lvl"), cl::init(""));
 // Use -start-crash-order to specify crash order of the function, from which
 // we should start Taint Analysis.
 static cl::opt<unsigned>
     StartCrashOrder("start-crash-order",
                     cl::desc("Set frame to start tracking target taint info."),
                     cl::value_desc("start_crash_order"), cl::init(0));
+
+// Ukini
+static cl::opt<std::string> TestChangedAdressValues(
+    "test-changed-address-values",
+    cl::desc("Test taint-analysis with changed values in address."),
+    cl::value_desc("<changed_adress,changed_value>..."), cl::init(""));
 
 using namespace llvm;
 
@@ -217,11 +223,56 @@ void crash_analyzer::TaintInfo::propagateDerefLevel(const MachineInstr &MI) {
     --DerefLevel;
 }
 
+bool is_number(const std::string &s) {
+  return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) {
+                         return !std::isdigit(c);
+                       }) == s.end();
+}
+
 crash_analyzer::TaintAnalysis::TaintAnalysis(
     StringRef TaintDotFileName, StringRef MirDotFileName,
     bool PrintPotentialCrashCauseLocation)
     : TaintDotFileName(TaintDotFileName), MirDotFileName(MirDotFileName),
-      PrintPotentialCrashCauseLocation(PrintPotentialCrashCauseLocation) {}
+      PrintPotentialCrashCauseLocation(PrintPotentialCrashCauseLocation) {
+  if (TestChangedAdressValues != "") {
+    // not checking if number is too large
+    int Start = 0;
+    int End = -1;
+
+    do {
+      Start = End + 1;
+      End = TestChangedAdressValues.find(",", Start);
+      if (!is_number(TestChangedAdressValues.substr(Start, End - Start))) {
+        // std::cout << stringToTokenize.substr(start, end - start) << " is not
+        // a number!" << std::endl;
+        LLVM_DEBUG(dbgs() << TestChangedAdressValues.substr(Start, End - Start)
+                          << " adr is not a number!\n");
+        break;
+      }
+
+      uint64_t Adr =
+          std::stol(TestChangedAdressValues.substr(Start, End - Start));
+      if (End == -1) {
+        LLVM_DEBUG(dbgs() << "No value for adr " << Adr << "!\n");
+        break;
+      }
+      Start = End + 1;
+      End = TestChangedAdressValues.find(",", Start);
+      if (!is_number(TestChangedAdressValues.substr(Start, End - Start))) {
+        LLVM_DEBUG(dbgs() << TestChangedAdressValues.substr(Start, End - Start)
+                          << " val is not a number!\n");
+        break;
+      }
+
+      uint64_t Val =
+          std::stol(TestChangedAdressValues.substr(Start, End - Start));
+
+      lldb::SBError err;
+      MemWrapper.WriteMemory(Adr, &Val, 8, err);
+
+    } while (End != -1);
+  }
+}
 
 void crash_analyzer::TaintAnalysis::calculateMemAddr(TaintInfo &Ti) {
   if (!Ti.Op->isReg() || !Ti.Offset)
@@ -302,8 +353,12 @@ void crash_analyzer::TaintAnalysis::calculateMemAddr(TaintInfo &Ti) {
           if (!Dec || !Dec->getTarget())
             break;
           lldb::SBError err;
-          Val = Dec->getTarget()->GetProcess().ReadUnsignedFromMemory(AddrValue,
-                                                                      8, err);
+          Optional<uint64_t> ValOptional =
+              MemWrapper.ReadUnsignedFromMemory(AddrValue, 8, err);
+          if (!ValOptional.hasValue())
+            break;
+
+          Val = *ValOptional;
         }
         Val += *Ti.Offset;
         Ti.ConcreteMemoryAddress = Val;
@@ -584,6 +639,7 @@ bool crash_analyzer::TaintAnalysis::getIsCrashAnalyzerTATool() const {
 void crash_analyzer::TaintAnalysis::setDecompiler(
     crash_analyzer::Decompiler *D) {
   Dec = D;
+  MemWrapper.setDecompiler(D);
 }
 Decompiler *crash_analyzer::TaintAnalysis::getDecompiler() const { return Dec; }
 
@@ -687,7 +743,8 @@ bool crash_analyzer::TaintAnalysis::handleGlobalVar(TaintInfo &Ti) {
           MO2->ChangeToRegister(0, false);
           Ti.Op = MO2;
           calculateMemAddr(Ti);
-          LLVM_DEBUG(dbgs() << "Update Global Var Taint Info to " << Ti << "\n");
+          LLVM_DEBUG(dbgs()
+                     << "Update Global Var Taint Info to " << Ti << "\n");
         }
         Ti.IsGlobal = true;
         return true;
@@ -1015,7 +1072,7 @@ bool crash_analyzer::TaintAnalysis::runOnBlameMF(
   setREAnalysis(&REAnalysis);
 
   // Init the concrete reverse execution.
-  ConcreteReverseExec ReverseExecutionRecord(&MF);
+  ConcreteReverseExec ReverseExecutionRecord(&MF, MemWrapper, &REAnalysis);
   setCRE(&ReverseExecutionRecord);
   ReverseExecutionRecord.dump();
 
